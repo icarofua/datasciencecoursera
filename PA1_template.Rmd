@@ -1,0 +1,121 @@
+---
+title: "Course Project Reproducible Research"
+author: "Icaro Oliveira"
+date: "Saturday, September 13, 2014"
+output: html_document
+---
+First, i need to load the data and put it in a variable called activity.
+
+```{r}
+library(data.table)
+unzip(zipfile="repdata-data-activity.zip")
+data<-fread('activity.csv')
+data$date<-as.factor(data$date)
+```
+
+**What is mean total number of steps taken per day?**
+
+A histogram of the total number of steps taken each day:
+
+```{r}
+data2 <- na.omit(data)
+total.steps.by.date<-data2[,sum(steps),by=date]
+plot(total.steps.by.date,type='h',xlab='date',ylab='sum')
+```
+
+The mean of the total number of steps taken per day:
+
+```{r}
+mean.steps.by.date<-data2[,mean(steps),by=date]
+setnames(mean.steps.by.date,c('date','mean'))
+mean.steps.by.date
+```
+
+The median of the total number of steps taken per day:
+
+```{r}
+median.steps.by.date<-data2[,median(steps),by=date]
+setnames(median.steps.by.date,c('date','median'))
+median.steps.by.date
+```
+
+**What is the average daily activity pattern?**
+
+A time series plot of the 5-minute interval (x-axis) and the average number of steps taken from averaged across all days (y-axis):
+
+```{r}
+steps.by.interval<-data2[,mean(steps),by=interval]
+plot(steps.by.interval,type='l',xlab='interval',ylab='sum')
+```
+
+The 5-minute interval contains the maximum number of steps is:
+
+```{r}
+steps.by.interval[max(V1),interval]
+```
+
+**Imputing missing values**
+
+Total number of missing values in the dataset:
+```{r}
+sum(is.na(data))
+```
+
+The strategy for filling in all of the missing values in the dataset is set zero in NA column. The new dataset is the data2.
+
+```{r}
+data2<-data
+set(data2,which(is.na(data2)),1,0)
+```
+
+A histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. 
+
+```{r}
+total.steps.by.date<-data2[,sum(steps),by=date]
+plot(total.steps.by.date,type='h',xlab='date',ylab='sum')
+
+mean.steps.by.date<-data2[,mean(steps),by=date]
+setnames(mean.steps.by.date,c('date','mean'))
+mean.steps.by.date
+
+median.steps.by.date<-data2[,median(steps),by=date]
+setnames(median.steps.by.date,c('date','median'))
+median.steps.by.date
+
+```
+
+These values differ from the estimates of the first part of the assignment and the impact is high, because some new dates are showed like 2012-10-01, 2012-10-08, 2012-11-04 and others with means and medians next to zero. 
+
+**Are there differences in activity patterns between weekdays and weekends?**
+
+```{r}
+discoverTypeDay = function(dates)
+{
+    week.days<-c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+    week.end<-c("Saturday", "Sunday")
+    type.day <- vector()
+    for (d in dates)
+    {
+      day = weekdays(as.Date(d))
+      if (day %in% week.days)
+        type.day<-rbind(type.day,"weekday")
+      else if (day %in% week.end)
+        type.day<-rbind(type.day,"weekend")
+      else
+          stop("invalid date")
+    }
+    return (type.day)
+}  
+
+data2<-data2[,"type.day":=discoverTypeDay(date),by=steps]
+data2$type.day<-as.factor(data2$type.day)
+
+data2<-data2[,mean(steps),by="interval,type.day"]
+```
+
+A panel plot containing a time series plot of the 5-minute interval and the average number of steps taken from all weekday days or weekend days (y-axis). 
+```{r}
+library(ggplot2)
+ggplot(data2, aes(interval, V1)) + geom_line() + facet_grid(type.day ~ .) +
+    xlab("5-minute interval") + ylab("Mean of steps")
+```
